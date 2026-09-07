@@ -32,6 +32,8 @@ const server = http.createServer((req, res) => {
   target.pathname = `${upstream.pathname.replace(/\/$/, '')}/${incoming.pathname.replace(/^\//, '')}`;
   target.search = incoming.search;
   const headers = { ...req.headers, host: target.host, 'x-forwarded-host': req.headers.host || '' };
+  // Add a valid request timestamp for receivers that display/parse the Date header.
+  headers.date = new Date().toUTCString();
   delete headers['content-length'];
 
   const transport = target.protocol === 'https:' ? https : http;
