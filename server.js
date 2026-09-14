@@ -6,6 +6,8 @@ const upstreamUrl = process.env.UPSTREAM_URL;
 const upstreamPath = process.env.UPSTREAM_PATH;
 const upstreamBearerToken = process.env.UPSTREAM_BEARER_TOKEN;
 const upstreamAccept = process.env.UPSTREAM_ACCEPT || 'application/json';
+const incomingPath = process.env.INCOMING_PATH || '/hook/development-myagroservices';
+const healthPath = process.env.HEALTH_PATH || '/health-check';
 const timeoutMs = Number(process.env.UPSTREAM_TIMEOUT_MS || 30000);
 
 function log(message, details = {}) {
@@ -72,6 +74,25 @@ const server = http.createServer((req, res) => {
     queryParams: Object.fromEntries(incoming.searchParams),
   };
 
+  if (incoming.pathname === healthPath) {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end('{"status":"ok"}');
+    log('Health check completed', { ...requestLog, status: 200, durationMs: Date.now() - startedAt });
+    return;
+  }
+
+  if (incoming.pathname !== incomingPath) {
+    res.writeHead(404, { 'content-type': 'application/json' });
+    res.end('{"error":"not_found"}');
+    log('Request rejected: invalid path', {
+      ...requestLog,
+      expectedPath: incomingPath,
+      status: 404,
+      durationMs: Date.now() - startedAt,
+    });
+    return;
+  }
+
   const bodyChunks = [];
   req.on('data', (chunk) => bodyChunks.push(chunk));
   req.on('end', () => {
@@ -80,13 +101,6 @@ const server = http.createServer((req, res) => {
       ...requestLog,
       bodyParams: parseBodyParams(body, req.headers['content-type'] || ''),
     });
-
-    if (req.url === '/health' || req.url === '/healthz') {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end('{"status":"ok"}');
-      log('Request completed', { ...requestLog, status: 200, durationMs: Date.now() - startedAt });
-      return;
-    }
 
     // The incoming path/query is appended to the configured upstream base URL.
     const target = new URL(upstream);
@@ -144,5 +158,7 @@ server.listen(port, '0.0.0.0', () => {
   log('Upstream configured', {
     upstream: upstream.origin,
     fixedPath: upstreamPath || null,
+    incomingPath,
+    healthPath,
   });
 });
