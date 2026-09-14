@@ -5,6 +5,14 @@ const port = Number(process.env.PORT || 8080);
 const upstreamUrl = process.env.UPSTREAM_URL;
 const timeoutMs = Number(process.env.UPSTREAM_TIMEOUT_MS || 30000);
 
+function log(message, details = {}) {
+  process.stdout.write(`${JSON.stringify({
+    time: new Date().toISOString(),
+    message,
+    ...details,
+  })}\n`);
+}
+
 if (!upstreamUrl) {
   console.error('Missing required environment variable: UPSTREAM_URL');
   process.exit(1);
@@ -20,9 +28,22 @@ try {
 }
 
 const server = http.createServer((req, res) => {
+  const startedAt = Date.now();
+  const requestPath = req.url || '/';
+  const requestLog = {
+    method: req.method,
+    path: requestPath,
+    ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+    contentType: req.headers['content-type'] || null,
+    contentLength: req.headers['content-length'] || null,
+  };
+
+  log('Incoming request', requestLog);
+
   if (req.url === '/health' || req.url === '/healthz') {
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end('{"status":"ok"}');
+    log('Request completed', { ...requestLog, status: 200, durationMs: Date.now() - startedAt });
     return;
   }
 
@@ -43,6 +64,12 @@ const server = http.createServer((req, res) => {
     timeout: timeoutMs,
   }, (response) => {
     res.writeHead(response.statusCode || 502, response.headers);
+    log('Upstream response', {
+      ...requestLog,
+      upstream: target.origin,
+      status: response.statusCode || 502,
+      durationMs: Date.now() - startedAt,
+    });
     response.pipe(res);
   });
 
@@ -56,6 +83,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`HTTP proxy listening on port ${port}`);
-  console.log(`Upstream base URL: ${upstream.origin}`);
+  log('HTTP proxy listening', { port });
+  log('Upstream configured', { upstream: upstream.origin });
 });

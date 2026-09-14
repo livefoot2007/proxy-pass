@@ -7,6 +7,13 @@ Petit reverse proxy configurable par variables d'environnement, adapté à un d�
 - `GET /health` ou `GET /healthz` répond `200` sans appeler la cible.
 - Toute autre requête est envoyée vers `UPSTREAM_URL` en conservant la méthode, le chemin, la query string, les en-têtes et le corps.
 - Exemple : `POST /api/orders?id=10` avec `UPSTREAM_URL=https://api.example.com` devient `https://api.example.com/api/orders?id=10`.
+- Les logs sont écrits en JSON sur stdout : démarrage, requête reçue et réponse de l'upstream. Les corps et secrets ne sont jamais journalisés.
+
+Exemple de logs :
+
+```json
+{"time":"2026-09-14T10:00:00.000Z","message":"Incoming request","method":"POST","path":"/hook/example/","ip":"178.18.244.143","contentType":"multipart/form-data; boundary=...","contentLength":"157"}
+```
 
 ## Exécution locale
 
