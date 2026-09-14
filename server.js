@@ -3,6 +3,7 @@ const https = require('node:https');
 
 const port = Number(process.env.PORT || 8080);
 const upstreamUrl = process.env.UPSTREAM_URL;
+const upstreamBearerToken = process.env.UPSTREAM_BEARER_TOKEN;
 const timeoutMs = Number(process.env.UPSTREAM_TIMEOUT_MS || 30000);
 
 function log(message, details = {}) {
@@ -87,6 +88,11 @@ const server = http.createServer((req, res) => {
     // Add a valid request timestamp for receivers that display/parse the Date header.
     headers.date = new Date().toUTCString();
     delete headers['content-length'];
+    delete headers['transfer-encoding'];
+    headers['content-length'] = body.length;
+    if (upstreamBearerToken) {
+      headers.authorization = `Bearer ${upstreamBearerToken}`;
+    }
 
     const transport = target.protocol === 'https:' ? https : http;
     const request = transport.request(target, {
