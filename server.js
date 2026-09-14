@@ -99,13 +99,17 @@ const server = http.createServer((req, res) => {
     delete headers['content-length'];
     delete headers['transfer-encoding'];
     headers['content-length'] = body.length;
+    if (!headers.accept && (req.headers['content-type'] || '').includes('application/json')) {
+      headers.accept = 'application/json';
+    }
     if (upstreamBearerToken) {
       headers.authorization = `Bearer ${upstreamBearerToken}`;
     }
 
     log('Sending request to upstream', {
       ...requestLog,
-      upstream: target.origin,
+      upstream: target.toString(),
+      accept: headers.accept || null,
       authorizationForwarded: Boolean(upstreamBearerToken || headers.authorization),
       configuredBearerToken: maskToken(upstreamBearerToken),
     });
@@ -119,7 +123,7 @@ const server = http.createServer((req, res) => {
       res.writeHead(response.statusCode || 502, response.headers);
       log('Upstream response', {
         ...requestLog,
-        upstream: target.origin,
+        upstream: target.toString(),
         status: response.statusCode || 502,
         durationMs: Date.now() - startedAt,
       });
@@ -138,5 +142,8 @@ const server = http.createServer((req, res) => {
 
 server.listen(port, '0.0.0.0', () => {
   log('HTTP proxy listening', { port });
-  log('Upstream configured', { upstream: upstream.origin });
+  log('Upstream configured', {
+    upstream: upstream.origin,
+    fixedPath: upstreamPath || null,
+  });
 });
