@@ -3,6 +3,7 @@ const https = require('node:https');
 
 const port = Number(process.env.PORT || 8080);
 const upstreamUrl = process.env.UPSTREAM_URL;
+const upstreamPath = process.env.UPSTREAM_PATH;
 const upstreamBearerToken = process.env.UPSTREAM_BEARER_TOKEN;
 const timeoutMs = Number(process.env.UPSTREAM_TIMEOUT_MS || 30000);
 
@@ -88,7 +89,9 @@ const server = http.createServer((req, res) => {
 
     // The incoming path/query is appended to the configured upstream base URL.
     const target = new URL(upstream);
-    target.pathname = `${upstream.pathname.replace(/\/$/, '')}/${incoming.pathname.replace(/^\//, '')}`;
+    target.pathname = upstreamPath
+      ? upstreamPath.startsWith('/') ? upstreamPath : `/${upstreamPath}`
+      : `${upstream.pathname.replace(/\/$/, '')}/${incoming.pathname.replace(/^\//, '')}`;
     target.search = incoming.search;
     const headers = { ...req.headers, host: target.host, 'x-forwarded-host': req.headers.host || '' };
     // Add a valid request timestamp for receivers that display/parse the Date header.
