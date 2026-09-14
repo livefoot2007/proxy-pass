@@ -37,6 +37,12 @@ function parseBodyParams(body, contentType = '') {
   return {};
 }
 
+function maskToken(token) {
+  if (!token) return null;
+  if (token.length <= 6) return '******';
+  return `${token.slice(0, 3)}****${token.slice(-3)}`;
+}
+
 if (!upstreamUrl) {
   console.error('Missing required environment variable: UPSTREAM_URL');
   process.exit(1);
@@ -93,6 +99,13 @@ const server = http.createServer((req, res) => {
     if (upstreamBearerToken) {
       headers.authorization = `Bearer ${upstreamBearerToken}`;
     }
+
+    log('Sending request to upstream', {
+      ...requestLog,
+      upstream: target.origin,
+      authorizationForwarded: Boolean(upstreamBearerToken || headers.authorization),
+      configuredBearerToken: maskToken(upstreamBearerToken),
+    });
 
     const transport = target.protocol === 'https:' ? https : http;
     const request = transport.request(target, {
