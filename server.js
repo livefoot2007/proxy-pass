@@ -5,6 +5,7 @@ const port = Number(process.env.PORT || 8080);
 const upstreamUrl = process.env.UPSTREAM_URL;
 const upstreamPath = process.env.UPSTREAM_PATH;
 const upstreamBearerToken = process.env.UPSTREAM_BEARER_TOKEN;
+const upstreamAccept = process.env.UPSTREAM_ACCEPT || 'application/json';
 const timeoutMs = Number(process.env.UPSTREAM_TIMEOUT_MS || 30000);
 
 function log(message, details = {}) {
@@ -99,9 +100,7 @@ const server = http.createServer((req, res) => {
     delete headers['content-length'];
     delete headers['transfer-encoding'];
     headers['content-length'] = body.length;
-    if (!headers.accept && (req.headers['content-type'] || '').includes('application/json')) {
-      headers.accept = 'application/json';
-    }
+    headers.accept = upstreamAccept;
     if (upstreamBearerToken) {
       headers.authorization = `Bearer ${upstreamBearerToken}`;
     }
